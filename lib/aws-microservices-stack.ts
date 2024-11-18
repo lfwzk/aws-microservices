@@ -4,6 +4,9 @@ import {AttributeType, BillingMode, Table} from "aws-cdk-lib/aws-dynamodb";
 import {Code, Function, Runtime} from "aws-cdk-lib/aws-lambda";
 import {join} from "path";
 import {NodejsFunction, NodejsFunctionProps} from "aws-cdk-lib/aws-lambda-nodejs";
+import {LambdaRestApi} from "aws-cdk-lib/aws-apigateway";
+
+// TODO: Investigar sobre Proxys
 
 export class AwsMicroservicesStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -34,11 +37,27 @@ export class AwsMicroservicesStack extends cdk.Stack {
             runtime: Runtime.NODEJS_14_X,
       }
       // funtion for product
- const productFunction = new NodejsFunction(this, 'productLambdaFunction', {
-    entry: join(__dirname, '../src/product/index.ts'),
-     ...nodeJsFuctionProps,
+      const productFunction = new NodejsFunction(this, 'productLambdaFunction', {
+        entry: join(__dirname, '../src/product/index.ts'),
+        ...nodeJsFuctionProps,
  });
 // grant permission to lambda to access dynamoDB
       ProductTable.grantReadWriteData(productFunction)
+      // API_GATEWAY
+
+    const apigateway = new LambdaRestApi(this, 'productApi', {
+        restApiName: 'Product Service',
+        handler: productFunction,
+        proxy: false
+    });
+     const product = apigateway.root.addResource('product');
+     product.addMethod('GET');  // GET /product
+     product.addMethod('POST')  // POST /product
+
+      const productId = product.addResource('{id}');
+        productId.addMethod('GET'); // GET /product/{id}
+        productId.addMethod('PUT'); // PUT /product/{id}
+        productId.addMethod('DELETE'); // DELETE /product/{id}
+
   }
 }
