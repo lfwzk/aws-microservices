@@ -34,7 +34,7 @@ export class AwsMicroservicesStack extends cdk.Stack {
                 TABLE_NAME: ProductTable.tableName,
                 PRIMARY_KEY: 'id'
           },
-            runtime: Runtime.NODEJS_14_X,
+            runtime: Runtime.NODEJS_LATEST
       }
       // funtion for product
       const productFunction = new NodejsFunction(this, 'productLambdaFunction', {
