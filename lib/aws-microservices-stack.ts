@@ -31,8 +31,8 @@ export class AwsMicroservicesStack extends cdk.Stack {
               externalModules: ['aws-sdk'],
           },
           environment: {
-                TABLE_NAME: ProductTable.tableName,
-                PRIMARY_KEY: 'id'
+                PRIMARY_KEY: 'id',
+                DYNAMODB_TABLE_NAME: ProductTable.tableName
           },
             runtime: Runtime.NODEJS_LATEST
       }
