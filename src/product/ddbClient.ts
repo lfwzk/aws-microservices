@@ -1,8 +1,5 @@
-exports.handler = async  function (event){
-    console.log("request:", JSON.stringify(event, undefined, 2));
-    return {
-        statusCode: 200,
-        headers: { "Content-Type": "text/plain" },
-        body: `Hello from Product ! You've hit ${event.path}\n`
-    };
-}
+// Create service client module using ES6 syntax.
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+// Create an Amazon DynamoDB service client object.
+const ddbClient = new DynamoDBClient();
+export { ddbClient };
