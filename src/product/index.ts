@@ -1,15 +1,17 @@
-import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
-  GetItemCommand,
-  ScanCommand,
-  PutItemCommand,
   DeleteItemCommand,
+  GetItemCommand,
+  PutItemCommand,
+  QueryCommand,
+  ScanCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { ddbClient } from "./ddbClient";
 import { v4 as uuidv4 } from "uuid";
 
 interface Event {
+  queryStringParameters: any;
   httpMethod?: any;
   pathParameters?: any;
   path?: any;
@@ -18,52 +20,69 @@ interface Event {
 
 exports.handler = async function (event: Event) {
   console.log("request:", JSON.stringify(event, undefined, 2));
+  let body;
 
-  // metodo switch para manejar las rutas y metodos de la API
-  switch (event.httpMethod) {
-    case "GET":
-      if (event.pathParameters != null) {
-        body = await getProduct(event.pathParameters.id); // GET /product/{id}
-      } else {
-        body = await getAllProducts(); // GET /product
-      }
-    case "POST":
-      body = await createProduct(event); // POST /product
-      break;
-    case "DELETE":
-      body = await deleteProduct(event.pathParameters.id); // DELETE /product/{id}
-      break;
-    case "PUT":
-      body = await updateProduct(event); //   PUT /product/{id}
-      break;
+  try {
+    switch (event.httpMethod) {
+      case "GET":
+        if (event.queryStringParameters != null) {
+          body = await getProductsByCategory(event); // GET product/1234?category=Phone
+        } else if (event.pathParameters != null) {
+          body = await getProduct(event.pathParameters.id); // GET product/{id}
+        } else {
+          body = await getAllProducts(); // GET product
+        }
+        break;
+      case "POST":
+        body = await createProduct(event); // POST /product
+        break;
+      case "DELETE":
+        body = await deleteProduct(event.pathParameters.id); // DELETE /product/{id}
+        break;
+      case "PUT":
+        body = await updateProduct(event); // PUT /product/{id}
+        break;
+      default:
+        throw new Error(`Unsupported route: "${event.httpMethod}"`);
+    }
 
-    default:
-      // por si no puede iterar en el switch
-      throw new Error(`Unsupported route: "${event.httpMethod}"`);
+    console.log(body);
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: `Successfully finished operation: "${event.httpMethod}"`,
+        body: body,
+      }),
+    };
+  } catch (e: any) {
+    console.error(e);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        message: "Failed to perform operation.",
+        errorMsg: e.message,
+        errorStack: e.stack,
+      }),
+    };
   }
-
-  return {
-    statusCode: 200,
-    headers: { "Content-Type": "text/plain" },
-    body: `Hello from Product ! You've hit ${event.path}\n`,
-  };
 };
-// TODO: Investigar sobre MARSHALL
 
-const getProduct = async (productId: string) => {
+const getProduct = async (productId: any) => {
   console.log("getProduct");
+
   try {
     const params = {
       TableName: process.env.DYNAMODB_TABLE_NAME,
-      // primary key: id
       Key: marshall({ id: productId }),
     };
+
     const { Item } = await ddbClient.send(new GetItemCommand(params));
-    console.log("Item", Item);
+
+    console.log(Item);
     return Item ? unmarshall(Item) : {};
-  } catch (error) {
-    console.log("error", error);
-    throw error;
+  } catch (e) {
+    console.error(e);
+    throw e;
   }
 };
 
@@ -73,18 +92,22 @@ const getAllProducts = async () => {
     const params = {
       TableName: process.env.DYNAMODB_TABLE_NAME,
     };
+
     const { Items } = await ddbClient.send(new ScanCommand(params));
-  } catch (error) {
-    console.log("error", error);
-    throw error;
+
+    console.log(Items);
+    return Items ? Items.map((item) => unmarshall(item)) : {};
+  } catch (e) {
+    console.error(e);
+    throw e;
   }
 };
-// createProduct function
-const createProduct = async (event: Event) => {
-  console.log(`createProduct event: ${event}`);
-  try {
-    const productRequest = JSON.parse(<string>event.body);
 
+const createProduct = async (event: Event) => {
+  console.log(`createProduct function. event : "${event}"`);
+  try {
+    const productRequest = event.body ? JSON.parse(event.body) : {};
+    // set productid
     const productId = uuidv4();
     productRequest.id = productId;
 
@@ -92,39 +115,45 @@ const createProduct = async (event: Event) => {
       TableName: process.env.DYNAMODB_TABLE_NAME,
       Item: marshall(productRequest || {}),
     };
+
     const createResult = await ddbClient.send(new PutItemCommand(params));
-    console.log("createResult", createResult);
+
+    console.log(createResult);
     return createResult;
-  } catch (error) {
-    console.error("error", error);
-    throw error;
+  } catch (e) {
+    console.error(e);
+    throw e;
   }
 };
 
-// deleteProduct function
+const deleteProduct = async (productId: any) => {
+  console.log(`deleteProduct function. productId : "${productId}"`);
 
-const deleteProduct = async (productId: string) => {
-  console.log(`delete product ${productId}`);
   try {
     const params = {
       TableName: process.env.DYNAMODB_TABLE_NAME,
       Key: marshall({ id: productId }),
     };
+
     const deleteResult = await ddbClient.send(new DeleteItemCommand(params));
-  } catch (error) {
-    console.log("error", error);
-    throw error;
+
+    console.log(deleteResult);
+    return deleteResult;
+  } catch (e) {
+    console.error(e);
+    throw e;
   }
 };
 
 const updateProduct = async (event: Event) => {
-  console.log(`updateProduct event: ${event}`);
-
+  console.log(`updateProduct function. event : "${event}"`);
   try {
-    const requestBody = JSON.parse(<string>event.body);
+    const requestBody = event.body ? JSON.parse(event.body) : {};
     const objKeys = Object.keys(requestBody);
+    console.log(
+      `updateProduct function. requestBody : "${requestBody}", objKeys: "${objKeys}"`
+    );
 
-    console.log(`update product ${event} with ${objKeys}`);
     const params = {
       TableName: process.env.DYNAMODB_TABLE_NAME,
       Key: marshall({ id: event.pathParameters.id }),
@@ -150,8 +179,38 @@ const updateProduct = async (event: Event) => {
     };
 
     const updateResult = await ddbClient.send(new UpdateItemCommand(params));
-  } catch (error) {
-    console.error("error", error);
-    throw error;
+
+    console.log(updateResult);
+    return updateResult;
+  } catch (e) {
+    console.error(e);
+    throw e;
+  }
+};
+
+const getProductsByCategory = async (event: Event) => {
+  console.log("getProductsByCategory");
+  try {
+    // GET product/1234?category=Phone
+    const productId = event.pathParameters.id;
+    const category = event.queryStringParameters.category;
+
+    const params = {
+      KeyConditionExpression: "id = :productId",
+      FilterExpression: "contains (category, :category)",
+      ExpressionAttributeValues: {
+        ":productId": { S: productId },
+        ":category": { S: category },
+      },
+      TableName: process.env.DYNAMODB_TABLE_NAME,
+    };
+
+    const { Items } = await ddbClient.send(new QueryCommand(params));
+
+    console.log(Items);
+    return Items ? Items.map((item) => unmarshall(item)) : [];
+  } catch (e) {
+    console.error(e);
+    throw e;
   }
 };

@@ -43,7 +43,7 @@ export class AwsMicroservicesStack extends cdk.Stack {
  });
 // grant permission to lambda to access dynamoDB
       ProductTable.grantReadWriteData(productFunction)
-      // API_GATEWAY
+    // API_GATEWAY
 
     const apigateway = new LambdaRestApi(this, 'productApi', {
         restApiName: 'Product Service',
