@@ -24,5 +24,7 @@ export class EcommerceDatabase extends Construct {
     });
 
     this.ProductTable = ProductTable;
+
+    // basket table
   }
 }
