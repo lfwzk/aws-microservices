@@ -1,11 +1,6 @@
-import { RemovalPolicy } from "aws-cdk-lib";
-import {
-  AttributeType,
-  BillingMode,
-  ITable,
-  Table,
-} from "aws-cdk-lib/aws-dynamodb";
-import { Construct } from "constructs";
+import {RemovalPolicy} from "aws-cdk-lib";
+import {AttributeType, BillingMode, ITable, Table,} from "aws-cdk-lib/aws-dynamodb";
+import {Construct} from "constructs";
 
 export class EcommerceDatabase extends Construct {
   public readonly ProductTable: ITable;
@@ -26,5 +21,18 @@ export class EcommerceDatabase extends Construct {
     this.ProductTable = ProductTable;
 
     // basket table
+    // Basket : pk username  -- items (set map object)
+    // item 1 { quantity - color - size - product_id - price, product_name }
+    // item 2 { quantity - color - size - product_id - price, product_name }
+  const BasketTable = new Table(this, 'basket', {
+    partitionKey: {
+      name: 'username',
+        type: AttributeType.STRING
+    },
+    tableName: 'basket',
+    removalPolicy: RemovalPolicy.DESTROY,
+    billingMode: BillingMode.PAY_PER_REQUEST
+  })
+
   }
 }
