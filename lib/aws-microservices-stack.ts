@@ -17,7 +17,8 @@ export class AwsMicroservicesStack extends cdk.Stack {
     // Lambda
 
     const microservices = new EcommerceMicroservice(this, "microservices", {
-      ProductTable: database.ProductTable,
+      productTable: database.productTable,
+      basketTable : database.basketTable,
     });
 
     // API_GATEWAY

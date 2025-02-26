@@ -8,22 +8,31 @@ import { Construct } from "constructs";
 import { join } from "path";
 
 interface EcommerceMicroserviceProps {
-  ProductTable: ITable;
+  productTable: ITable;
+  basketTable: ITable;
 }
 
 export class EcommerceMicroservice extends Construct {
   public readonly productMicroservice: NodejsFunction;
+  public readonly basketMicroservice: NodejsFunction;
 
   constructor(scope: Construct, id: string, props: EcommerceMicroserviceProps) {
     super(scope, id);
 
+    this.productMicroservice = this.createProductFunction(props.productTable);
+    this.basketMicroservice = this.createBasketFunction(props.basketTable);
+  }
+
+
+// funcion de creacion de los productos
+  private createProductFunction(productTable: ITable) :NodejsFunction{
     const nodeJsFuctionProps: NodejsFunctionProps = {
       bundling: {
         externalModules: ["aws-sdk"],
       },
       environment: {
         PRIMARY_KEY: "id",
-        DYNAMODB_TABLE_NAME: props.ProductTable.tableName,
+        DYNAMODB_TABLE_NAME: productTable.tableName,
       },
       runtime: Runtime.NODEJS_LATEST,
     };
@@ -32,8 +41,29 @@ export class EcommerceMicroservice extends Construct {
       ...nodeJsFuctionProps,
     });
     // grant permission to lambda to access dynamoDBC
-    props.ProductTable.grantReadWriteData(productFunction);
+    productTable.grantReadWriteData(productFunction);
 
-    this.productMicroservice = productFunction;
+    return productFunction;
+  }
+
+  private createBasketFunction (basketTable: ITable) : NodejsFunction {
+    const basketFunctionProps: NodejsFunctionProps = {
+      bundling: {
+        externalModules: ["aws-sdk"],
+      },
+      environment: {
+        PRIMARY_KEY: "username",
+        DYNAMODB_TABLE_NAME: basketTable.tableName,
+      },
+      runtime: Runtime.NODEJS_LATEST,
+    }
+    const basketFunction = new NodejsFunction(this, "basketLambdaFunction", {
+      entry: join(__dirname, "../src/basket/index.ts"),
+      ...basketFunctionProps,
+    });
+    // grant permission to lambda to access dynamoDBC
+    basketTable.grantReadWriteData(basketFunction);
+    return basketFunction;
+
   }
 }

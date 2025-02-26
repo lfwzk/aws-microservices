@@ -4,13 +4,13 @@ import {Construct} from "constructs";
 
 export class EcommerceDatabase extends Construct {
 
-  public readonly ProductTable: ITable;
-  public readonly BasketTable: ITable;
+  public readonly productTable: ITable;
+  public readonly basketTable: ITable;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
-    this.ProductTable = this.createProductTable();
-    this.BasketTable = this.createBasketTable();
+    this.productTable = this.createProductTable();
+    this.basketTable = this.createBasketTable();
   }
 
   // Product DynamoDb Table Creation
